@@ -1,0 +1,50 @@
+inputs:
+  java-version:
+    description: Java version (e.g. `25`) to use for the build.
+    required: false
+    default: '25'
+  artifact-name:
+    description: Name to give the uploaded JAR artifact.
+    required: false
+    default: app-jar
+  cache-read-only:
+    description: Whether Gradle cache should be read-only.
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ inputs.java-version }}
+        distribution: temurin
+        cache: gradle
+
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v4
+      with:
+        cache-read-only: ${{ inputs.cache-read-only }}
+        gradle-home-cache-cleanup: true
+
+    - name: Make gradlew executable
+      run: chmod +x gradlew
+      shell: bash
+
+    - name: Build & Test
+      run: ./gradlew check bootJar
+      shell: bash
+
+    - name: Upload JaCoCo Report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: jacoco-report
+        path: build/reports/jacoco/test/html/
+
+    - name: Upload JAR
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: build/libs/*.jar
